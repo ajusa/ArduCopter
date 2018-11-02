@@ -195,7 +195,7 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     g2.proximity.get_horizontal_distance(90, dist_right);
     g2.proximity.get_horizontal_distance(180, dist_backward);
     g2.proximity.get_horizontal_distance(270, dist_left);
-    if(dist_left == .2 || dist_forward == .2) return false;
+    if(dist_left == .05 || dist_forward == .05) return false;
     // set desired climb rate in centimeters per second
     target_climb_rate = 2f;
 
