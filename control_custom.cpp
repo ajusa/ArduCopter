@@ -195,14 +195,14 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     g2.proximity.get_horizontal_distance(90, dist_right);
     g2.proximity.get_horizontal_distance(180, dist_backward);
     g2.proximity.get_horizontal_distance(270, dist_left);
-    if(dist_left == .05 || dist_forward == .05) return false;
+    if(dist_left < .05 || dist_forward < .05) return false;
     // set desired climb rate in centimeters per second
-    target_climb_rate = 2f;
+    target_climb_rate = 2.0f;
 
     // set desired roll and pitch in centi-degrees
     target_pitch = 0.0f;
     target_roll = 0.0f;
-
+    cliSerial->printf("hey this is a print");
     // set desired yaw rate in centi-degrees per second (set to zero to hold constant heading)
     target_yaw_rate = 0.0f;
 
