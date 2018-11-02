@@ -188,7 +188,7 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
 {
     // get downward facing sensor reading in meters
     float rangefinder_alt = (float)rangefinder_state.alt_cm / 100.0f;
-
+    //test comment
     // get horizontal sensor readings in meters
     float dist_forward, dist_right, dist_backward, dist_left;
     g2.proximity.get_horizontal_distance(0, dist_forward);
