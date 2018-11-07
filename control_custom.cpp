@@ -184,8 +184,12 @@ void Copter::custom_run()
 
 // custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
 // returns true to continue flying, and returns false to land
+int i = 0;
+
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
+    i++;
+    /*
     // get downward facing sensor reading in meters
     float rangefinder_alt = (float)rangefinder_state.alt_cm / 100.0f;
     //test comment
@@ -207,4 +211,5 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     target_yaw_rate = 0.0f;
 
     return true;
+    */
 }
