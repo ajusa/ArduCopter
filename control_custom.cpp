@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "Copter.h"
 
 using namespace std;
@@ -32,8 +33,7 @@ bool Copter::custom_init(bool ignore_checks)
 
 // custom_run - runs the custom controller
 // should be called at 100hz or more
-void Copter::custom_run()
-{
+void Copter::custom_run() {
     AltHoldModeState althold_state;
     float takeoff_climb_rate = 0.0f;
 
@@ -79,10 +79,10 @@ void Copter::custom_run()
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
         attitude_control->reset_rate_controller_I_terms();
         attitude_control->set_yaw_target_to_current_heading();
-#if FRAME_CONFIG == HELI_FRAME    
+#if FRAME_CONFIG == HELI_FRAME
         // force descent rate and call position controller
         pos_control->set_alt_target_from_climb_rate(-abs(g.land_speed), G_Dt, false);
-        heli_flags.init_targets_on_arming=true;
+        heli_flags.init_targets_on_arming = true;
 #else
         pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
 #endif
@@ -90,9 +90,9 @@ void Copter::custom_run()
         break;
 
     case AltHold_Takeoff:
-#if FRAME_CONFIG == HELI_FRAME    
+#if FRAME_CONFIG == HELI_FRAME
         if (heli_flags.init_targets_on_arming) {
-            heli_flags.init_targets_on_arming=false;
+            heli_flags.init_targets_on_arming = false;
         }
 #endif
         // set motors to full range
@@ -100,7 +100,7 @@ void Copter::custom_run()
 
         // initiate take-off
         if (!takeoff_state.running) {
-            takeoff_timer_start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
+            takeoff_timer_start(constrain_float(g.pilot_takeoff_alt, 0.0f, 1000.0f));
             // indicate we are taking off
             set_land_complete(false);
             // clear i terms
@@ -130,12 +130,12 @@ void Copter::custom_run()
             motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
         }
 
-#if FRAME_CONFIG == HELI_FRAME    
+#if FRAME_CONFIG == HELI_FRAME
         if (heli_flags.init_targets_on_arming) {
             attitude_control->reset_rate_controller_I_terms();
             attitude_control->set_yaw_target_to_current_heading();
             if (motors->get_interlock()) {
-                heli_flags.init_targets_on_arming=false;
+                heli_flags.init_targets_on_arming = false;
             }
         }
 #else
@@ -184,11 +184,20 @@ void Copter::custom_run()
 
 // custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
 // returns true to continue flying, and returns false to land
-int i = 0;
-
+enum DIR {Front, Back, Left, Right};
+DIR direction = Front;
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
-    i++;
+    float distances[4];
+    for (int i = 0; i < 4; ++i)
+    {
+        g2.proximity.get_horizontal_distance(i*90, distances[DIR::Front]);
+    }
+    g2.proximity.get_horizontal_distance(0, distances[DIR::Front]);
+    g2.proximity.get_horizontal_distance(90, distances[DIR::Right]);
+    g2.proximity.get_horizontal_distance(180, distances[DIR::Back]);
+    g2.proximity.get_horizontal_distance(270, distances[DIR::Left]);
+    direction = distance(A, max_element(A, A + N)); //this holds the direction with the largest distance
     /*
     // get downward facing sensor reading in meters
     float rangefinder_alt = (float)rangefinder_state.alt_cm / 100.0f;
