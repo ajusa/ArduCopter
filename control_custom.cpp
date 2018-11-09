@@ -33,10 +33,11 @@ bool Copter::custom_init(bool ignore_checks)
 
 // custom_run - runs the custom controller
 // should be called at 100hz or more
+
 void Copter::custom_run() {
     AltHoldModeState althold_state;
+    //writing my code here 
     float takeoff_climb_rate = 0.0f;
-
     // initialize vertical speeds and acceleration
     pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
     pos_control->set_accel_z(g.pilot_accel_z);
@@ -69,7 +70,7 @@ void Copter::custom_run() {
     } else {
         althold_state = AltHold_Flying;
     }
-
+    althold_state = AltHold_Flying;
     // Alt Hold State Machine
     switch (althold_state) {
 
@@ -186,18 +187,23 @@ void Copter::custom_run() {
 // returns true to continue flying, and returns false to land
 enum DIR {Front, Back, Left, Right};
 DIR direction = Front;
+int i = 0;
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
-    float distances[4];
-    for (int i = 0; i < 4; ++i)
-    {
-        g2.proximity.get_horizontal_distance(i*90, distances[DIR::Front]);
+    vector<float> distances(4);
+    const int N = sizeof(distances) / sizeof(float);
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, distances[i]);
+    distances.erase();
+    direction = (DIR)distance(distances.begin(), max_element(distances.begin(), distances.end())); //this holds the direction with the largest distance
+    if(i == 400){ //i is a terrible timer
+        //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
+        //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", distances[2], distances[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", direction);
+        i = 0;
     }
-    g2.proximity.get_horizontal_distance(0, distances[DIR::Front]);
-    g2.proximity.get_horizontal_distance(90, distances[DIR::Right]);
-    g2.proximity.get_horizontal_distance(180, distances[DIR::Back]);
-    g2.proximity.get_horizontal_distance(270, distances[DIR::Left]);
-    direction = distance(A, max_element(A, A + N)); //this holds the direction with the largest distance
+    ++i;
+    //GCS_MAVLINK::send_statustext_chan(MAV_SEVERITY_INFO, chan, "Frame print pls: %s", copter.get_frame_string());
+    return true;
     /*
     // get downward facing sensor reading in meters
     float rangefinder_alt = (float)rangefinder_state.alt_cm / 100.0f;
