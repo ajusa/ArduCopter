@@ -185,15 +185,15 @@ void Copter::custom_run() {
 
 // custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
 // returns true to continue flying, and returns false to land
-enum DIR {Front, Back, Left, Right};
+enum DIR {Front, Right, Back, Left};
 DIR direction = Front;
+float speed = 50; //5 degrees?
 int i = 0;
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
     vector<float> distances(4);
-    const int N = sizeof(distances) / sizeof(float);
     for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, distances[i]);
-    distances.erase();
+    distances.erase(distances.begin() + ((direction + 2) % 4));
     direction = (DIR)distance(distances.begin(), max_element(distances.begin(), distances.end())); //this holds the direction with the largest distance
     if(i == 400){ //i is a terrible timer
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
@@ -202,6 +202,12 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
         i = 0;
     }
     ++i;
+    switch(direction){
+        case Front: target_pitch = -speed; break;
+        case Right: target_roll = speed; break;
+        case Back: target_pitch = speed; break;
+        case Left: target_roll = -speed; break;
+    }
     //GCS_MAVLINK::send_statustext_chan(MAV_SEVERITY_INFO, chan, "Frame print pls: %s", copter.get_frame_string());
     return true;
     /*
