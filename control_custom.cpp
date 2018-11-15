@@ -186,51 +186,28 @@ void Copter::custom_run() {
 // custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
 // returns true to continue flying, and returns false to land
 enum DIR {Front, Right, Back, Left};
-DIR direction = Front;
+DIR dir = Front;
 float speed = 50; //5 degrees?
 int i = 0;
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
-    vector<float> distances(4);
-    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, distances[i]);
-    distances.erase(distances.begin() + ((direction + 2) % 4));
-    direction = (DIR)distance(distances.begin(), max_element(distances.begin(), distances.end())); //this holds the direction with the largest distance
+    vector<float> dists(4);
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
+    dists.erase(dists.begin() + ((dir + 2) % 4));
+    DIR oldDir = dir;
+    dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //this holds the dir with the largest distance
     if(i == 400){ //i is a terrible timer
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", distances[2], distances[3]);
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", direction);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", dir);
         i = 0;
     }
     ++i;
-    switch(direction){
+    switch(dir){
         case Front: target_pitch = -speed; break;
         case Right: target_roll = speed; break;
         case Back: target_pitch = speed; break;
         case Left: target_roll = -speed; break;
     }
-    //GCS_MAVLINK::send_statustext_chan(MAV_SEVERITY_INFO, chan, "Frame print pls: %s", copter.get_frame_string());
     return true;
-    /*
-    // get downward facing sensor reading in meters
-    float rangefinder_alt = (float)rangefinder_state.alt_cm / 100.0f;
-    //test comment
-    // get horizontal sensor readings in meters
-    float dist_forward, dist_right, dist_backward, dist_left;
-    g2.proximity.get_horizontal_distance(0, dist_forward);
-    g2.proximity.get_horizontal_distance(90, dist_right);
-    g2.proximity.get_horizontal_distance(180, dist_backward);
-    g2.proximity.get_horizontal_distance(270, dist_left);
-    if(dist_left < .05 || dist_forward < .05) return false;
-    // set desired climb rate in centimeters per second
-    target_climb_rate = 2.0f;
-
-    // set desired roll and pitch in centi-degrees
-    target_pitch = 0.0f;
-    target_roll = 0.0f;
-    cliSerial->printf("hey this is a print");
-    // set desired yaw rate in centi-degrees per second (set to zero to hold constant heading)
-    target_yaw_rate = 0.0f;
-
-    return true;
-    */
 }
