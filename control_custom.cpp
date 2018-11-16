@@ -189,26 +189,35 @@ enum DIR {Front, Right, Back, Left};
 DIR dir = Front;
 float speed = 50; //5 degrees?
 float crashDistance = 10;
+float noise = 10;
 int i = 0;
-char mode = 'q';
+int obstacles = 0;
+char mode = 'b';
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
     vector<float> dists(4);
     DIR oldDir = dir;
     for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
-    if(mode == 'q')
-        dists.erase(dists.begin() + ((dir + 2) % 4));
+    dists[(dir + 2) % 4] = 0; //make the opposite direction 0
+    if(mode == 'q'){
         dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
-    else{
+        if(oldDir != dir) obstacles++;
+    }
+    else if (mode == 'b'){
         if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
-            dists.erase(dists.begin() + ((dir + 2) % 4));
             dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
+            obstacles++;
         } //then change direction.
+    } else { //this mode treats small readings like noise, to avoid changing direction if we hit a wall too fast
+        for (auto &dist : dists) if(dist < noise) dist = 0;
+        dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
+        if(oldDir != dir) obstacles++;
     }
     if(i == 400){ //i is a terrible timer
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", distances[2], distances[3]);
         gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", dir);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
         i = 0;
     }
     ++i;
