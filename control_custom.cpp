@@ -1,16 +1,26 @@
 #include <iostream>
 #include <algorithm>
 #include "Copter.h"
-
+#include "Parameters.h"
 using namespace std;
 
 /*
  * Init and run calls for custom flight mode (largely based off of the AltHold flight mode)
  */
-
+enum DIR {Front, Right, Back, Left};
+DIR dir = Front;
+float noise = 10;
+int i = 0;
+int obstacles = 0;
+char mode = 'b';
 // custom_init - initialise custom controller
 bool Copter::custom_init(bool ignore_checks)
 {
+    dir = Front;
+    noise = 10;
+    i = 0;
+    obstacles = 0;
+    mode = 'b';
     // initialize vertical speeds and leash lengths
     pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
     pos_control->set_accel_z(g.pilot_accel_z);
@@ -20,7 +30,6 @@ bool Copter::custom_init(bool ignore_checks)
         pos_control->set_alt_target_to_current_alt();
         pos_control->set_desired_velocity_z(inertial_nav.get_velocity_z());
     }
-
     // stop takeoff if running
     takeoff_stop();
 
@@ -70,7 +79,7 @@ void Copter::custom_run() {
     } else {
         althold_state = AltHold_Flying;
     }
-    althold_state = AltHold_Flying;
+    //althold_state = AltHold_Flying;
     // Alt Hold State Machine
     switch (althold_state) {
 
@@ -185,34 +194,33 @@ void Copter::custom_run() {
 
 // custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
 // returns true to continue flying, and returns false to land
-enum DIR {Front, Right, Back, Left};
-DIR dir = Front;
-float speed = 50; //5 degrees?
-float crashDistance = 10;
-float noise = 10;
-int i = 0;
-int obstacles = 0;
-char mode = 'b';
+
+
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
+    float speed = g.custom_param2; //5 degrees?
+    float crashDistance = g.custom_param1;
     vector<float> dists(4);
     DIR oldDir = dir;
     for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
     dists[(dir + 2) % 4] = 0; //make the opposite direction 0
-    if(mode == 'q'){
+    /*if(mode == 'q'){
         dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
         if(oldDir != dir) obstacles++;
     }
-    else if (mode == 'b'){
+    else if (mode == 'b'){*/
+    if(i == 20){
         if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
             dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
-            obstacles++;
+            if(oldDir != dir) obstacles++;
         } //then change direction.
-    } else { //this mode treats small readings like noise, to avoid changing direction if we hit a wall too fast
+    }
+    if(obstacles == 3) return false;
+    /*} else { //this mode treats small readings like noise, to avoid changing direction if we hit a wall too fast
         for (auto &dist : dists) if(dist < noise) dist = 0;
         dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
         if(oldDir != dir) obstacles++;
-    }
+    }*/
     if(i == 400){ //i is a terrible timer
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
         //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", distances[2], distances[3]);
