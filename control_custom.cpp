@@ -204,26 +204,19 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     DIR oldDir = dir;
     for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
     dists[(dir + 2) % 4] = 0; //make the opposite direction 0
-    /*if(mode == 'q'){
-        dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
-        if(oldDir != dir) obstacles++;
-    }
-    else if (mode == 'b'){*/
-    if(i == 20){
+    if(i % 20 == 0){
         if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
             dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
             if(oldDir != dir) obstacles++;
         } //then change direction.
     }
-    if(obstacles == 3) return false;
-    /*} else { //this mode treats small readings like noise, to avoid changing direction if we hit a wall too fast
-        for (auto &dist : dists) if(dist < noise) dist = 0;
-        dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end())); //largest distance direction
-        if(oldDir != dir) obstacles++;
-    }*/
+    if(obstacles == 5) {
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Landed!", dir);
+        return false;
+    }
     if(i == 400){ //i is a terrible timer
-        //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", distances[0], distances[1]);
-        //gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", distances[2], distances[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", dists[0], dists[1]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", dists[2], dists[3]);
         gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", dir);
         gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
         i = 0;
