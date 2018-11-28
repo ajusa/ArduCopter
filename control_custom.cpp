@@ -40,6 +40,88 @@ bool Copter::custom_init(bool ignore_checks)
     return true;
 }
 
+
+
+// custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
+// returns true to continue flying, and returns false to land
+/*bool avoid_walls(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate){
+    float speed = g.custom_param2; //5 degrees?
+    float crashDistance = g.custom_param1;
+    vector<float> dists(4);
+    DIR oldDir = dir;
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
+    dists[(dir + 2) % 4] = 0; //make the opposite direction 0
+    if(i % 20 == 0){
+        if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
+            dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
+            if(oldDir != dir) obstacles++;
+        } //then change direction.
+    }
+    if(obstacles == 5) {
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Landed!", dir);
+        return false;
+    }
+    if(i == 400){ //i is a terrible timer
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", dists[0], dists[1]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", dists[2], dists[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", dir);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
+        i = 0;
+    }
+    ++i;
+    switch(dir){
+        case Front: target_pitch = -speed; break;
+        case Right: target_roll = speed; break;
+        case Back: target_pitch = speed; break;
+        case Left: target_roll = -speed; break;
+    }
+    return true;
+}
+bool avoid_door(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate){
+    return false;
+}*/
+
+bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
+{
+    float speed = g.custom_param2; //5 degrees?
+    float crashDistance = g.custom_param1;
+    vector<float> dists(4);
+    DIR oldDir = dir;
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
+    dists[(dir + 2) % 4] = 0; //make the opposite direction 0
+    if(i % 20 == 0){
+        if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
+            dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
+            if(oldDir != dir) obstacles++;
+        } //then change direction.
+    }
+    if(obstacles == 5) {
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Landed!", dir);
+        return false;
+    }
+    if(i == 400){ //i is a terrible timer
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", dists[0], dists[1]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", dists[2], dists[3]);
+        char human_dir[100];
+        if(dir == Front) strcpy(human_dir, "Front");
+        if(dir == Right) strcpy(human_dir, "Right");
+        if(dir == Back) strcpy(human_dir, "Back");
+        if(dir == Back) strcpy(human_dir, "Back");
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %s", human_dir);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
+        i = 0;
+    }
+    ++i;
+    switch(dir){
+        case Front: target_pitch = -speed; break;
+        case Right: target_roll = speed; break;
+        case Back: target_pitch = speed; break;
+        case Left: target_roll = -speed; break;
+    }
+    return true;
+}
+
+
 // custom_run - runs the custom controller
 // should be called at 100hz or more
 
@@ -190,43 +272,4 @@ void Copter::custom_run() {
         pos_control->update_z_controller();
         break;
     }
-}
-
-// custom_controller - computes target climb rate, roll, pitch, and yaw rate for custom flight mode
-// returns true to continue flying, and returns false to land
-
-
-bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
-{
-    float speed = g.custom_param2; //5 degrees?
-    float crashDistance = g.custom_param1;
-    vector<float> dists(4);
-    DIR oldDir = dir;
-    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]);
-    dists[(dir + 2) % 4] = 0; //make the opposite direction 0
-    if(i % 20 == 0){
-        if(dists[dir] < crashDistance){ //if we hit a wall 10 centimeters away
-            dir = (DIR)distance(dists.begin(), max_element(dists.begin(), dists.end()));
-            if(oldDir != dir) obstacles++;
-        } //then change direction.
-    }
-    if(obstacles == 5) {
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Landed!", dir);
-        return false;
-    }
-    if(i == 400){ //i is a terrible timer
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Back: %f", dists[0], dists[1]);
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Left: %f, Right: %f", dists[2], dists[3]);
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %d", dir);
-        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
-        i = 0;
-    }
-    ++i;
-    switch(dir){
-        case Front: target_pitch = -speed; break;
-        case Right: target_roll = speed; break;
-        case Back: target_pitch = speed; break;
-        case Left: target_roll = -speed; break;
-    }
-    return true;
 }
