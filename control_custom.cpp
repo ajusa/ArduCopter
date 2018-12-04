@@ -83,10 +83,12 @@ bool avoid_door(float &target_climb_rate, float &target_roll, float &target_pitc
     return false;
 }*/
 
-bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
+/*bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
     float speed = g.custom_param2; //get our speed in centi-degrees from custom params
     float crash = g.custom_param1; //get the distance at which we want to detect an obstacle and turn
+    target_pitch = 0;
+    target_roll = 0;
     vector<float> dists(4); //create a vector of distances read by the quadcopter
     for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]); //fill it with values we read from each direction
     DIR oldDir = dir; //create a copy of our current direction
@@ -105,6 +107,44 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     if(i == 400){ //i is a terrible timer
         gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Right: %f", dists[0], dists[1]);
         gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Back: %f, Left: %f", dists[2], dists[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Target Pitch: %f, Target Roll: %f", target_pitch, target_roll);
+        char human_dir[100];
+        if(dir == Front) strcpy(human_dir, "Front");
+        if(dir == Right) strcpy(human_dir, "Right");
+        if(dir == Back) strcpy(human_dir, "Back");
+        if(dir == Left) strcpy(human_dir, "Left");
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Longest Path %s", human_dir);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Obstacles Avoided %d", obstacles);
+        i = 0;
+    }
+    ++i;
+    return true;
+}*/
+//this version handles only the door
+bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
+{
+    float speed = g.custom_param2; //get our speed in centi-degrees from custom params
+    float crash = g.custom_param1; //get the distance at which we want to detect an obstacle and turn
+    target_pitch = 0;
+    target_roll = 0;
+    vector<float> dists(4); //create a vector of distances read by the quadcopter
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]); //fill it with values we read from each direction
+    dists[(dir + 2) % 4] = 0; //make the opposite direction 0
+    if(i % 20 == 0){ //used for timing purposes, this code runs 20 times a second instead of 400
+        if(dists[dir] < crash) dir = (DIR)(max_element(dists.begin(), dists.end()) - dists.begin()); //if we see a wall change direction.
+        if(oldDir != dir) obstacles++; //if the direction changed, we saw an obstacle
+    }
+    if(obstacles == 5) return false; //5th obstacle is when we land
+    switch(dir){
+        case Front: target_pitch = -speed; break;
+        case Right: target_roll = speed; break;
+        case Back: target_pitch = speed; break;
+        case Left: target_roll = -speed; break;
+    }
+    if(i == 400){ //i is a terrible timer
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Right: %f", dists[0], dists[1]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Back: %f, Left: %f", dists[2], dists[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Target Pitch: %f, Target Roll: %f", target_pitch, target_roll);
         char human_dir[100];
         if(dir == Front) strcpy(human_dir, "Front");
         if(dir == Right) strcpy(human_dir, "Right");
