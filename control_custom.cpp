@@ -14,12 +14,12 @@ int i = 0;
 int obstacles = 0;
 char mode = 'b';
 int del = 0;
-float prevLIDAR = 0.0;
-float prevLIDAR2 = 0.0;
+float doorDistance = 0.0;
 vector<float> dists(4, 0.0); //create a vector of distances read by the quadcopter
 enum DOOR {None, Out, In};
 DOOR state = None;
 float speed = 0.0;
+
 // custom_init - initialise custom controller
 bool Copter::custom_init(bool ignore_checks)
 {
@@ -31,6 +31,7 @@ bool Copter::custom_init(bool ignore_checks)
     mode = 'b';
     state = None;
     speed = 0.0;
+    doorDistance = 0.0;
     // initialize vertical speeds and leash lengths
     pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
     pos_control->set_accel_z(g.pilot_accel_z);
@@ -132,47 +133,47 @@ bool avoid_door(float &target_climb_rate, float &target_roll, float &target_pitc
 
 bool Copter::custom_controller(float &target_climb_rate, float &target_roll, float &target_pitch, float &target_yaw_rate)
 {
-     //get our speed in centi-degrees from custom params
+    //get our speed in centi-degrees from custom params
     float crash = g.custom_param1; //get the distance at which we want to detect an obstacle and turn
     target_pitch = 0;
     target_roll = 0;
-    prevLIDAR = dists[0];
-    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i*90, dists[i]); //fill it with values we read from each direction
-    if(prevLIDAR != dists[0]) prevLIDAR2 = prevLIDAR;
-    if(i % 40 == 0){ //used for timing purposes, this code runs 20 times a second instead of 400
-         //store the last record in the array
-        float total_dDoor = dists[0] - prevLIDAR2;
-        if(del > 200){
-            if(state == None){
-                if(abs(total_dDoor) > g.custom_param3){ //fast door parameter
-                    state = total_dDoor > 0.000 ? In : Out;
+    float d_Door = dists[0] - doorDistance;
+    for (int i = 0; i < 4; ++i) g2.proximity.get_horizontal_distance(i * 90, dists[i]); //fill it with values we read from each direction
+    if (del > 200) {
+        if (i % 40 == 0) { //used for timing purposes, this code runs 20 times a second instead of 400
+            //store the last record in the array
+            if (state == None) {
+                if (abs(d_Door) > g.custom_param3) { //fast door parameter
+                    state = d_Door > 0.000 ? In : Out;
                 }
-            } else if(state == Out || state == In){
-                float average = (dists[0] - prevLIDAR2)/2;
-                if(average > g.custom_param4){ //once the door has opened enough basically
+            } else if (state == Out || state == In) {
+                if (d_Door > g.custom_param4) { //once the door has opened enough basically
                     speed = g.custom_param2; //actually move forward
                 }
             }
-        } else ++del;
-        if(i == 400){ //i is a terrible timer
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Right: %f", dists[0], dists[1]);
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Back: %f, Left: %f", dists[2], dists[3]);
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Target Pitch: %f, Target Roll: %f", target_pitch, target_roll);
-            char human_door[100];
-            if(state == None) strcpy(human_door, "None");
-            if(state == Out) strcpy(human_door, "Out");
-            if(state == In) strcpy(human_door, "In");
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Door Type %s", human_door);
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "total_dDoor %f", total_dDoor);
-            gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "prevLIDAR2 %f", prevLIDAR2);
-            i = 0;
         }
+    } else {
+        ++del;
+        doorDistance = dists[0];
     }
-    switch(dir){
-        case Front: target_pitch = -speed; break;
-        case Right: target_roll = speed; break;
-        case Back: target_pitch = speed; break;
-        case Left: target_roll = -speed; break;
+    switch (dir) {
+    case Front: target_pitch = -speed; break;
+    case Right: target_roll = speed; break;
+    case Back: target_pitch = speed; break;
+    case Left: target_roll = -speed; break;
+    }
+    if (i == 400) { //i is a terrible timer
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Front: %f, Right: %f", dists[0], dists[1]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Back: %f, Left: %f", dists[2], dists[3]);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Target Pitch: %f, Target Roll: %f", target_pitch, target_roll);
+        char human_door[100];
+        if (state == None) strcpy(human_door, "None");
+        if (state == Out) strcpy(human_door, "Out");
+        if (state == In) strcpy(human_door, "In");
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "Door Type %s", human_door);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "doorDistance %f", doorDistance);
+        gcs_send_text_fmt(MAV_SEVERITY_CRITICAL, "d_Door %f", d_Door);
+        i = 0;
     }
     ++i;
     return true;
@@ -184,7 +185,7 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
 
 void Copter::custom_run() {
     AltHoldModeState althold_state;
-    //writing my code here 
+    //writing my code here
     float takeoff_climb_rate = 0.0f;
     // initialize vertical speeds and acceleration
     pos_control->set_speed_z(-g.pilot_velocity_z_max, g.pilot_velocity_z_max);
