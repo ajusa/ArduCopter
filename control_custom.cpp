@@ -92,7 +92,7 @@ bool Copter::custom_controller(float &target_climb_rate, float &target_roll, flo
     if(dists[Front] > crash) dir = Front;
     else if(dists[Left] > crash && dir != Right) dir = Left;
     else if(dists[Right] > crash && dir != Left) dir = Right;
-    else return false;
+    else if(dists[Right] < crash && dists[Front] < crash && dists[Left] < crash) return false;
     switch (dir) {
     case Front: target_pitch = -speed; break;
     case Right: target_roll = speed; break;
